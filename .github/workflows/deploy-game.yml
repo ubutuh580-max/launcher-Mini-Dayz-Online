@@ -20,22 +20,25 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Extract assets.zip + media.zip (keduanya sama-sama punya folder www/ di dalamnya, jadi digabung ke staging yang sama)
+      - name: Extract Plugin.zip + assets.zip + media.zip (semua digabung ke staging yang sama)
         run: |
           mkdir -p staging
+          unzip -o Plugin.zip -d staging
           unzip -o assets.zip -d staging
           unzip -o media.zip -d staging
-          echo "Isi folder staging setelah extract:"
-          find staging -maxdepth 3
+          echo "Total file hasil extract: $(find staging -type f | wc -l)"
+          echo "Isi folder staging (sampai 4 level ke dalam):"
+          find staging -maxdepth 4
 
       - name: Cari lokasi index.html yang sebenarnya
         id: findroot
         run: |
-          WEBROOT=$(dirname "$(find staging -iname 'index.html' | head -n 1)")
-          if [ -z "$WEBROOT" ]; then
-            echo "index.html TIDAK KETEMU! Cek log step sebelumnya -- kemungkinan assets.zip strukturnya beda dari dugaan." >&2
+          INDEX_PATH=$(find staging -iname 'index.html' | head -n 1)
+          if [ -z "$INDEX_PATH" ]; then
+            echo "index.html TIDAK KETEMU di dalam staging/! Cek log step sebelumnya buat lihat struktur folder yang sebenarnya." >&2
             exit 1
           fi
+          WEBROOT=$(dirname "$INDEX_PATH")
           echo "Ketemu index.html di: $WEBROOT"
           echo "Isi folder itu:"
           find "$WEBROOT" -maxdepth 1
