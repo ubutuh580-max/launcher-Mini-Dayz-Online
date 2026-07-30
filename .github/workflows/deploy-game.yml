@@ -1,0 +1,54 @@
+name: Deploy Game to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Extract assets.zip + media.zip (keduanya sama-sama punya folder www/ di dalamnya, jadi digabung ke staging yang sama)
+        run: |
+          mkdir -p staging
+          unzip -o assets.zip -d staging
+          unzip -o media.zip -d staging
+          echo "Isi folder staging setelah extract:"
+          find staging -maxdepth 3
+
+      - name: Cari lokasi index.html yang sebenarnya
+        id: findroot
+        run: |
+          WEBROOT=$(dirname "$(find staging -iname 'index.html' | head -n 1)")
+          if [ -z "$WEBROOT" ]; then
+            echo "index.html TIDAK KETEMU! Cek log step sebelumnya -- kemungkinan assets.zip strukturnya beda dari dugaan." >&2
+            exit 1
+          fi
+          echo "Ketemu index.html di: $WEBROOT"
+          echo "Isi folder itu:"
+          find "$WEBROOT" -maxdepth 1
+          echo "webroot=$WEBROOT" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ steps.findroot.outputs.webroot }}
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
